@@ -1,12 +1,8 @@
 package com.lgtoledo.Functions;
 
-import com.azure.cosmos.CosmosClient;
-import com.azure.cosmos.CosmosClientBuilder;
-import com.azure.cosmos.CosmosContainer;
-import com.azure.cosmos.models.CosmosItemRequestOptions;
-import com.azure.cosmos.models.PartitionKey;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lgtoledo.Configurations;
+import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
+import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -19,59 +15,46 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 
 public class DeleteLinkFunction {
     
+    private static CosmosDbService cosmosDbService = new CosmosDbService(
+            Configurations.COSMOS_DB_ENDPOINT,
+            Configurations.COSMOS_DB_KEY,
+            "meli-cosmosdb-database");
+
+    private static RedisCacheService redisCacheService = new RedisCacheService(
+            Configurations.REDIS_CACHE_HOST,
+            Configurations.REDIS_CACHE_PORT,
+            Configurations.REDIS_CACHE_KEY);
+
     @FunctionName("deleteLink")
     public HttpResponseMessage run(
         @HttpTrigger(name = "req", methods = {HttpMethod.DELETE}, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Void> request,
         @CosmosDBInput(name = "items",
                        databaseName = "meli-cosmosdb-database",
                        containerName = "links",
-                       sqlQuery = "SELECT * FROM c",
+                       sqlQuery = "SELECT * FROM c WHERE c.id = {id}",
                        connection = "CosmosDbConnectionString") String[] items,
         final ExecutionContext context) {
 
-        context.getLogger().info("Procesando request para eliminar todos los links de la base de datos...");
+        try {
+            final String id = request.getQueryParameters().get("id");
 
-        try (CosmosClient cosmosClient = createCosmosClient()) {
+            context.getLogger().info("Procesando request para eliminar linkId: " + id);     
 
-            CosmosContainer container = cosmosClient.getDatabase("meli-cosmosdb-database").getContainer("links");
-            ObjectMapper objectMapper = new ObjectMapper();
-
-            container.delete();
-
-            for (String item : items) {
-                try {
-                    JsonNode rootNode = objectMapper.readTree(item);
-                    JsonNode idNode = rootNode.path("id");
-
-                    if (!idNode.isMissingNode()) {
-                        String id = idNode.asText();
-                    
-                        // Eliminar el elemento usando el ID
-                        container.deleteItem(id, new PartitionKey(id), new CosmosItemRequestOptions());
-                        context.getLogger().info("Elemento eliminado con éxito: " + id);
-                    }
-                } catch (Exception e) {
-                    context.getLogger().warning("Error al procesar el elemento: " + e.getMessage());
-                }
+            if (items.length == 0) {
+                return request.createResponseBuilder(HttpStatus.NOT_FOUND).body("No se encontró el link a eliminar.").build();
             }
+
+            cosmosDbService.deleteLinkByIdAsync(id);
+            redisCacheService.deleteLinkAsync(id);
+            cosmosDbService.deleteLinkAccessStatByIdAsync(id);
 
             return request.createResponseBuilder(HttpStatus.OK).body("Se eliminaron todos los links correctamente.").build();
 
         } catch (Exception e) {
-            context.getLogger().severe("Error al eliminar los links: " + e.getMessage());
+            context.getLogger().severe("Error al eliminar link: " + e.getMessage());
 
-            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to delete all links.").build();
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al eliminar los links.").build();
         }
-    }
-
-    private CosmosClient createCosmosClient() {
-        String endpoint = System.getenv("CosmosDbEndpoint");
-        String key = System.getenv("CosmosDbKey");
-        
-        return new CosmosClientBuilder()
-            .endpoint(endpoint)
-            .key(key)
-            .buildClient();
     }
 
 }

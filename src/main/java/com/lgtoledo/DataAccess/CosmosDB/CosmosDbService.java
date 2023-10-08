@@ -55,7 +55,7 @@ public class CosmosDbService {
         }
     }
 
-    public void deleteLinkAsync(String shortLinkId) {
+    public void deleteLinkByIdAsync(String shortLinkId) {
         CompletableFuture.runAsync(() -> {
             try {
                 CosmosItemRequestOptions options = new CosmosItemRequestOptions();
@@ -121,7 +121,7 @@ public class CosmosDbService {
         }
     }
 
-    public void deleteLinkAccessStat(String shortLinkId) {
+    public void deleteLinkAccessStatByIdAsync(String shortLinkId) {
         try {
             CosmosItemRequestOptions options = new CosmosItemRequestOptions();
             cosmosLinksAccessStatsContainer.deleteItem(shortLinkId, new PartitionKey(shortLinkId), options);
