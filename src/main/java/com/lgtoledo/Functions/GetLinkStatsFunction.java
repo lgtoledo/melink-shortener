@@ -4,7 +4,6 @@ import java.util.Optional;
 
 import com.lgtoledo.Configurations;
 import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
-import com.lgtoledo.Models.Link;
 import com.lgtoledo.Models.LinkAccessStat;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;

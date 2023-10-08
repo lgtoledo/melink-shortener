@@ -17,8 +17,7 @@ public class DeleteAllLinksFunction {
     private static CosmosDbService cosmosDbService = new CosmosDbService(
             Configurations.COSMOS_DB_ENDPOINT,
             Configurations.COSMOS_DB_KEY,
-            "meli-cosmosdb-database",
-            "links");
+            "meli-cosmosdb-database");
 
     private static RedisCacheService redisCacheService = new RedisCacheService(
             Configurations.REDIS_CACHE_HOST,
@@ -32,9 +31,10 @@ public class DeleteAllLinksFunction {
 
         context.getLogger().info("Procesando request para eliminar todos los links de la base de datos...");
         try {
-            cosmosDbService.deleteAllLinks();
-            redisCacheService.flushAll();
-            
+            cosmosDbService.deleteAllLinksAsync();
+            redisCacheService.flushAllAsync();
+            cosmosDbService.deleteAllLinkAccessStatsAsync();
+
             return request.createResponseBuilder(HttpStatus.OK).body("Se eliminaron todos los links correctamente.").build();
 
         } catch (Exception e) {
