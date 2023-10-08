@@ -1,8 +1,8 @@
 package com.lgtoledo.Functions;
 
-import com.azure.cosmos.CosmosClient;
-import com.azure.cosmos.CosmosClientBuilder;
-import com.azure.cosmos.CosmosDatabase;
+import com.lgtoledo.Configurations;
+import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
+import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -14,7 +14,16 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 
 public class DeleteAllLinksFunction {
     
+    private static CosmosDbService cosmosDbService = new CosmosDbService(
+            Configurations.COSMOS_DB_ENDPOINT,
+            Configurations.COSMOS_DB_KEY,
+            "meli-cosmosdb-database",
+            "links");
 
+    private static RedisCacheService redisCacheService = new RedisCacheService(
+            Configurations.REDIS_CACHE_HOST,
+            Configurations.REDIS_CACHE_PORT,
+            Configurations.REDIS_CACHE_KEY);
 
     @FunctionName("deleteAllLinks")
     public HttpResponseMessage run(
@@ -22,24 +31,10 @@ public class DeleteAllLinksFunction {
         final ExecutionContext context) {
 
         context.getLogger().info("Procesando request para eliminar todos los links de la base de datos...");
-
-
-
-        try (CosmosClient cosmosClient = createCosmosClient()) {
-
-            CosmosDatabase database = cosmosClient.getDatabase("meli-cosmosdb-database");
-
-            boolean containerExists = database.readAllContainers().stream()
-                    .anyMatch(containerProperties -> containerProperties.getId().equals("links"));
+        try {
+            cosmosDbService.deleteAllLinks();
+            redisCacheService.flushAll();
             
-            if (containerExists) {
-                database.getContainer("links").delete();
-            }
-
-            database.createContainerIfNotExists("links", "/id");
-
-            //TODO: limpiar caché
-
             return request.createResponseBuilder(HttpStatus.OK).body("Se eliminaron todos los links correctamente.").build();
 
         } catch (Exception e) {
@@ -48,15 +43,4 @@ public class DeleteAllLinksFunction {
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al eliminar los links.").build();
         }
     }
-
-    private CosmosClient createCosmosClient() {
-        String endpoint = System.getenv("CosmosDbEndpoint");
-        String key = System.getenv("CosmosDbKey");
-        
-        return new CosmosClientBuilder()
-            .endpoint(endpoint)
-            .key(key)
-            .buildClient();
-    }
-
 }

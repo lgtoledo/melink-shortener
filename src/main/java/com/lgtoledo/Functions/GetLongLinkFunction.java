@@ -17,7 +17,18 @@ import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 
 public class GetLongLinkFunction {
-    
+
+    private static CosmosDbService cosmosDbService = new CosmosDbService(
+            Configurations.COSMOS_DB_ENDPOINT,
+            Configurations.COSMOS_DB_KEY,
+            "meli-cosmosdb-database",
+            "links");
+
+    private static RedisCacheService redisCacheService = new RedisCacheService(
+            Configurations.REDIS_CACHE_HOST,
+            Configurations.REDIS_CACHE_PORT,
+            Configurations.REDIS_CACHE_KEY);
+
     @FunctionName("getLongLink")
     public HttpResponseMessage run(
             @HttpTrigger(
@@ -29,7 +40,6 @@ public class GetLongLinkFunction {
             final ExecutionContext context) {
 
         // obtener el link largo de la caché si existe
-        RedisCacheService redisCacheService = new RedisCacheService(Configurations.REDIS_CACHE_HOST, Configurations.REDIS_CACHE_PORT, Configurations.REDIS_CACHE_KEY);
         Optional<LinkModel> optLongLinkFromCache = redisCacheService.getLinkByShortId(shortLinkId);
         
         if (optLongLinkFromCache.isPresent()) {
@@ -42,12 +52,6 @@ public class GetLongLinkFunction {
         context.getLogger().info("No se encontraron datos en Redis Cache. Se obtendrán de Cosmos DB...");
 
         // obtener el link largo de Cosmos DB
-        CosmosDbService cosmosDbService = new CosmosDbService(
-                Configurations.COSMOS_DB_ENDPOINT,
-                Configurations.COSMOS_DB_KEY,
-                "meli-cosmosdb-database",
-                "links");
-
         Optional<LinkModel> optLongLink = cosmosDbService.getLinkByShortId(shortLinkId);
 
         if (!optLongLink.isPresent()) {

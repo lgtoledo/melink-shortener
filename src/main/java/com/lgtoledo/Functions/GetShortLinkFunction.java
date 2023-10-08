@@ -18,22 +18,26 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 
 public class GetShortLinkFunction {
 
+    private static RedisCacheService redisCacheService = new RedisCacheService(
+            Configurations.REDIS_CACHE_HOST,
+            Configurations.REDIS_CACHE_PORT,
+            Configurations.REDIS_CACHE_KEY);
+
+    private static CosmosDbService cosmosDbService = new CosmosDbService(
+            Configurations.COSMOS_DB_ENDPOINT,
+            Configurations.COSMOS_DB_KEY,
+            "meli-cosmosdb-database",
+            "links");
+
     String longUrlRegex = "^(http|https)://.*$";
 
     @FunctionName("getShortLink")
     public HttpResponseMessage getShortLink(
-            @HttpTrigger(name = "req", methods = { HttpMethod.GET }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
+            @HttpTrigger(name = "req", methods = { HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
 
         long startTime = System.nanoTime();
         context.getLogger().info("Procesando request para crear un nuevo link corto...");
-        
-        CosmosDbService cosmosDbService = new CosmosDbService(
-                Configurations.COSMOS_DB_ENDPOINT,
-                Configurations.COSMOS_DB_KEY,
-                "meli-cosmosdb-database",
-                "links");
-        
         
         // Verifico si el link largo fue enviado en el body del request
         Optional<String> optLongLink = request.getBody();
@@ -62,7 +66,6 @@ public class GetShortLinkFunction {
         }
 
         // guardo el link en Redis Cache
-        RedisCacheService redisCacheService = new RedisCacheService(Configurations.REDIS_CACHE_HOST, Configurations.REDIS_CACHE_PORT, Configurations.REDIS_CACHE_KEY);
         redisCacheService.setLink(savedLink);
 
         long endTime = System.nanoTime();
