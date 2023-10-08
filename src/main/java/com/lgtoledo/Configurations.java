@@ -8,4 +8,7 @@ public class Configurations {
     public static final Integer REDIS_CACHE_PORT = Integer.parseInt(System.getenv("RedisCachePort"));
     public static final String REDIS_CACHE_KEY = System.getenv("RedisCacheKey");
 
+    public static final String COSMOS_DB_LINKS_CONTAINER = "links";
+    public static final String COSMOS_DB_LINKS_ACCESS_STATS_CONTAINER = "linksAccessStats";
+
 }
