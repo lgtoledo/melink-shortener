@@ -5,6 +5,7 @@ import java.util.Optional;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
+import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.implementation.Document;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosItemResponse;
@@ -13,6 +14,7 @@ import com.lgtoledo.Models.LinkModel;
 
 public class CosmosDbService {
     private final CosmosClient cosmosClient;
+    private final CosmosDatabase cosmosDatabase;
     private final CosmosContainer cosmosContainer;
 
     public CosmosDbService(String endpoint, String key, String databaseName, String containerName) {
@@ -20,8 +22,8 @@ public class CosmosDbService {
                 .endpoint(endpoint)
                 .key(key)
                 .buildClient();
-
-        this.cosmosContainer = cosmosClient.getDatabase(databaseName).getContainer(containerName);
+        this.cosmosDatabase = cosmosClient.getDatabase(databaseName);
+        this.cosmosContainer = cosmosDatabase.getContainer(containerName);
     }
 
     public Optional<LinkModel> getLinkByShortId(String shortLinkId) {
@@ -59,7 +61,20 @@ public class CosmosDbService {
         }        
     }
 
+    public void deleteAllLinks() {
+        try {
+            boolean containerExists = cosmosDatabase.readAllContainers().stream()
+            .anyMatch(containerProperties -> containerProperties.getId().equals("links"));
     
+            if (containerExists) {
+                cosmosDatabase.getContainer("links").delete();
+            }
+            cosmosDatabase.createContainerIfNotExists("links", "/id");
+
+        } catch (Exception e) {
+            return;
+        }
+    }
 
     public boolean existsById(String shortLinkId) {
         try {
@@ -69,12 +84,6 @@ public class CosmosDbService {
         } catch (Exception e) {
                 
             return false;
-        }
-    }
-
-    public void close() {
-        if (cosmosClient != null) {
-            cosmosClient.close();
         }
     }
 }
