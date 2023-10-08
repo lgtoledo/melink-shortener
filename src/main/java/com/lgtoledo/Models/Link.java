@@ -1,15 +1,15 @@
 package com.lgtoledo.Models;
 
-public class LinkModel {
+public class Link {
     private String id;
-    private String long_link;
+    private String longLink;
 
-    public LinkModel() {
+    public Link() {
     }
 
-    public LinkModel(String id, String long_link) {
+    public Link(String id, String longLink) {
         this.id = id;
-        this.long_link = long_link;
+        this.longLink = longLink;
     }
 
     public String getId() {
@@ -20,31 +20,31 @@ public class LinkModel {
         this.id = shortLinkId;
     }
 
-    public String getLong_link() {
-        return long_link;
+    public String getlongLink() {
+        return longLink;
     }
 
-    public void setLong_link(String longLink) {
-        this.long_link = longLink;
+    public void setlongLink(String longLink) {
+        this.longLink = longLink;
     }
 
     @Override
     public String toString() {
         return "Link{" +
                 "shortLinkId='" + id + '\'' +
-                ", longLink='" + long_link + '\'' +
+                ", longLink='" + longLink + '\'' +
                 '}';
     }
 
     public String toJson() {
-        return String.format("{\"id\": \"%s\", \"long_link\": \"%s\"}", id, long_link);
+        return String.format("{\"id\": \"%s\", \"longLink\": \"%s\"}", id, longLink);
     }
 
-    public static LinkModel fromJson(String json) {
+    public static Link fromJson(String json) {
         String[] parts = json.split(",");
         String shortLinkId = parts[0].split(":")[1].replace("\"", "").trim();
         String longLink = parts[1].split(":")[1].replace("\"", "").trim();
-        return new LinkModel(shortLinkId, longLink);
+        return new Link(shortLinkId, longLink);
     }
 
 }
