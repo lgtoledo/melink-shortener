@@ -1,8 +1,9 @@
 package com.lgtoledo.DataAccess.RedisCache;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
-import com.lgtoledo.Models.LinkModel;
+import com.lgtoledo.Models.Link;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -18,14 +19,14 @@ public class RedisCacheService {
         this.jedisPool = new JedisPool(poolConfig, host, port, Protocol.DEFAULT_TIMEOUT, password, true);
     }
 
-    public Optional<LinkModel> getLinkByShortId(String shortLinkId) {
+    public Optional<Link> getLinkByShortId(String shortLinkId) {
         try (Jedis jedis = jedisPool.getResource()) {
             String longLink = jedis.get(shortLinkId);
             
             if (longLink != null && !longLink.isEmpty()) {
-                LinkModel linkModel = new LinkModel();
+                Link linkModel = new Link();
                 linkModel.setId(shortLinkId);
-                linkModel.setLong_link(longLink);
+                linkModel.setlongLink(longLink);
 
                 return Optional.of(linkModel);
             }
@@ -33,26 +34,36 @@ public class RedisCacheService {
         return Optional.empty();
     }
 
-    public void setLink(LinkModel link) {
-        try (Jedis jedis = jedisPool.getResource()) {
-            if (link != null && link.getId() != null && link.getLong_link() != null) {
-                long expireMinutes = 60;
-                
-                jedis.setex(link.getId(), expireMinutes * 60, link.getLong_link());
+    public void setLinkAsync(Link link) {
+        CompletableFuture.runAsync(() -> {
+            try (Jedis jedis = jedisPool.getResource()) {
+                if (link != null && link.getId() != null && link.getlongLink() != null) {
+                    long expireMinutes = 60;
+                    
+                    jedis.setex(link.getId(), expireMinutes * 60, link.getlongLink());
+                }
             }
-        }
+        });
     }
 
-    public void deleteLink(String shortLinkId) {
-        try (Jedis jedis = jedisPool.getResource()) {
-            jedis.del(shortLinkId);
-        }
+    public void deleteLinkAsync(String shortLinkId) {
+        CompletableFuture.runAsync(() -> {
+            try (Jedis jedis = jedisPool.getResource()) {
+                jedis.del(shortLinkId);
+            } catch (Exception e) {
+                return;
+            }
+        });
     }
 
-    public void flushAll() {
-        try (Jedis jedis = jedisPool.getResource()) {
-            jedis.flushDB(FlushMode.ASYNC);
-        }
+    public void flushAllAsync() {
+        CompletableFuture.runAsync(() -> {
+            try (Jedis jedis = jedisPool.getResource()) {
+                jedis.flushDB(FlushMode.ASYNC);
+            } catch (Exception e) {
+                return;
+            }
+        });
     }
 
 }

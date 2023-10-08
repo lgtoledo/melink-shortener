@@ -55,14 +55,16 @@ public class CosmosDbService {
         }
     }
 
-    public void deleteLink(String shortLinkId) {
-        try {
-            CosmosItemRequestOptions options = new CosmosItemRequestOptions();
-            cosmosLinksContainer.deleteItem(shortLinkId, new PartitionKey(shortLinkId), options);
-  
-        } catch (Exception e) {
-            return;
-        }        
+    public void deleteLinkAsync(String shortLinkId) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                CosmosItemRequestOptions options = new CosmosItemRequestOptions();
+                cosmosLinksContainer.deleteItem(shortLinkId, new PartitionKey(shortLinkId), options);
+    
+            } catch (Exception e) {
+                return;
+            } 
+        });
     }
 
     public void deleteAllLinksAsync() {
