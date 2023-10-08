@@ -1,11 +1,14 @@
 package com.lgtoledo.Functions;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import com.lgtoledo.Configurations;
 import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
 import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
-import com.lgtoledo.Models.LinkModel;
+import com.lgtoledo.Models.Link;
+import com.lgtoledo.Models.LinkAccessStat;
 import com.lgtoledo.utils.LinkUtils;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -26,8 +29,7 @@ public class GetShortLinkFunction {
     private static CosmosDbService cosmosDbService = new CosmosDbService(
             Configurations.COSMOS_DB_ENDPOINT,
             Configurations.COSMOS_DB_KEY,
-            "meli-cosmosdb-database",
-            "links");
+            "meli-cosmosdb-database");
 
     String longUrlRegex = "^(http|https)://.*$";
 
@@ -60,13 +62,14 @@ public class GetShortLinkFunction {
 
         // guardo el link en Cosmos DB
         String shortLinkId = optionalShortLinkId.get();
-        LinkModel savedLink = cosmosDbService.saveLink(new LinkModel(shortLinkId, longLink));
+        Link savedLink = cosmosDbService.saveLink(new Link(shortLinkId, longLink));
         if (savedLink == null) {
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("No se pudo guardar el link en Cosmos DB.").build();
         }
 
         // guardo el link en Redis Cache
-        redisCacheService.setLink(savedLink);
+        redisCacheService.setLinkAsync(savedLink);
+        registerStatAsync(shortLinkId, cosmosDbService);
 
         long endTime = System.nanoTime();
         long duration = (endTime - startTime) / 1000000;
@@ -78,10 +81,24 @@ public class GetShortLinkFunction {
     private Optional<String> generateUniqueShortLink(int maxTries, CosmosDbService cosmosDbService) {
         for (int i = 0; i < maxTries; i++) {
             String potentialShortLinkId = LinkUtils.generateShortLink();
-            if (!cosmosDbService.existsById(potentialShortLinkId)) {
+            if (!cosmosDbService.existsLinkById(potentialShortLinkId)) {
                 return Optional.of(potentialShortLinkId);
             }
         }
         return Optional.empty();
+    }
+
+    private void registerStatAsync(String shortLinkId, CosmosDbService cosmosDbService) {
+    CompletableFuture.runAsync(() -> {
+
+            LinkAccessStat newStat = new LinkAccessStat();
+            newStat.setId(shortLinkId);
+            newStat.setCreationDate(LocalDateTime.now());
+            newStat.setFirstAccessedDate(null);
+            newStat.setLastAccessedDate(null);
+            newStat.setAccessCount(0);
+
+            cosmosDbService.saveLinkAccessStat(newStat);
+        });
     }
 }
