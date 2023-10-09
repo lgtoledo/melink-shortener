@@ -43,15 +43,11 @@ public class GetShortLinkFunction {
         
         // Verifico si el link largo fue enviado en el body del request
         Optional<String> optLongLink = request.getBody();
-        if (!optLongLink.isPresent()) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Se debe de proporcionar un link largo válido.").build();
+        if (!LinkUtils.isValidUrl(optLongLink, longUrlRegex)) {
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Se debe de proporcionar un link largo válido." ).build();
         }
 
         String longLink = optLongLink.get();
-
-        if (!LinkUtils.isValidUrl(longLink, longUrlRegex)) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Se debe de proporcionar un link largo válido. Link: " + longLink).build();
-        }
 
         Integer maxTries = 10;
         Optional<String> optionalShortLinkId = generateUniqueShortLink(maxTries, cosmosDbService);
