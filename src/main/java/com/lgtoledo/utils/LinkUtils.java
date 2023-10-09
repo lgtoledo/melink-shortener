@@ -1,5 +1,6 @@
 package com.lgtoledo.utils;
 
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -7,11 +8,16 @@ import java.util.regex.Pattern;
 public class LinkUtils {
     /**
      * Valida si una URL cumple con el formato dado por una expresión regular.
-     * @param url La URL a validar.
+     * @param optUrl La URL a validar.
      * @param regex La expresión regular contra la cual validar la URL.
      * @return true si la URL es válida, false en caso contrario.
      */
-    public static boolean isValidUrl(String url, String regex) {
+    public static boolean isValidUrl(Optional<String> optUrl, String regex) {
+        if (!optUrl.isPresent()) {
+            return false;
+        }
+        String url = optUrl.get();
+        
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(url);
         return matcher.matches();
