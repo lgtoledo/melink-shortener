@@ -31,7 +31,7 @@ public class GetShortLinkFunction {
             Configurations.COSMOS_DB_KEY,
             "meli-cosmosdb-database");
 
-    String longUrlRegex = "^(http|https)://.*$";
+    String longUrlRegex = "^https://.*$";
 
     @FunctionName("getShortLink")
     public HttpResponseMessage getShortLink(
@@ -50,7 +50,7 @@ public class GetShortLinkFunction {
         String longLink = optLongLink.get();
 
         if (!LinkUtils.isValidUrl(longLink, longUrlRegex)) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Se debe de proporcionar un link largo válido.").build();
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Se debe de proporcionar un link largo válido. Link: " + longLink).build();
         }
 
         Integer maxTries = 10;
