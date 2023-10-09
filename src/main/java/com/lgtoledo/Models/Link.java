@@ -40,6 +40,10 @@ public class Link {
         return String.format("{\"id\": \"%s\", \"longLink\": \"%s\"}", id, longLink);
     }
 
+    public String toJsonResponse(String baseUrl) {
+        return String.format("{\"shortLink\": \"%s\", \"longLink\": \"%s\"}", baseUrl + "/l/" + id, longLink);
+    }
+
     public static Link fromJson(String json) {
         String[] parts = json.split(",");
         String shortLinkId = parts[0].split(":")[1].replace("\"", "").trim();

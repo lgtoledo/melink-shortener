@@ -70,7 +70,12 @@ public class GetShortLinkFunction {
         long endTime = System.nanoTime();
         long duration = (endTime - startTime) / 1000000;
 
-        return request.createResponseBuilder(HttpStatus.CREATED).body("Link corto creado correctamente. Demora: " + duration + "ms. Link: /" + shortLinkId).build();
+        context.getLogger().info("Link corto generado: " + savedLink.getId() + ". Duración: " + duration + "ms.");
+
+        String loadBalancerUrl = Configurations.LOAD_BALANCER_URL;
+
+        // response as json
+        return request.createResponseBuilder(HttpStatus.CREATED).body(savedLink.toJsonResponse(loadBalancerUrl)).build();
     }
 
 
