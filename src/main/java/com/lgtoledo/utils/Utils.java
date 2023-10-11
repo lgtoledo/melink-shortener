@@ -1,11 +1,14 @@
 package com.lgtoledo.utils;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class LinkUtils {
+public class Utils {
     /**
      * Valida si una URL cumple con el formato dado por una expresión regular.
      * @param optUrl La URL a validar.
@@ -39,6 +42,13 @@ public class LinkUtils {
     public static String extractLastPart(String shortUrl) {
         String[] parts = shortUrl.split("/");
         return parts[parts.length - 1];
+    }
+    /*
+     * Retorna la fecha y hora actual en UTC.
+     */
+    public static LocalDateTime getCurrentUtcDateTime() {
+        ZonedDateTime utc = ZonedDateTime.now(ZoneId.of("UTC"));
+        return utc.toLocalDateTime();
     }
 
 
