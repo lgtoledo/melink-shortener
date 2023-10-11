@@ -9,6 +9,7 @@ import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
 import com.lgtoledo.Models.ApiResponseDTO;
 import com.lgtoledo.Models.Link;
 import com.lgtoledo.Models.LinkAccessStat;
+import com.lgtoledo.utils.CodeGenerator;
 import com.lgtoledo.utils.Utils;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
@@ -90,7 +91,7 @@ public class GetShortLinkFunction {
 
     private Optional<String> generateUniqueShortLink(int maxTries, CosmosDbService cosmosDbService) {
         for (int i = 0; i < maxTries; i++) {
-            String potentialShortLinkId = Utils.generateShortLink();
+            String potentialShortLinkId = CodeGenerator.generateCode(6);
             if (!cosmosDbService.existsLinkById(potentialShortLinkId)) {
                 return Optional.of(potentialShortLinkId);
             }
