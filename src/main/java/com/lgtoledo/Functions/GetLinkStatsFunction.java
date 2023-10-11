@@ -4,7 +4,9 @@ import java.util.Optional;
 
 import com.lgtoledo.Configurations;
 import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
+import com.lgtoledo.Models.ApiResponseDTO;
 import com.lgtoledo.Models.LinkAccessStat;
+import com.lgtoledo.Models.LinkAccessStatDTO;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -31,21 +33,21 @@ public class GetLinkStatsFunction {
                 authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
             @BindingName("shortLinkId") String shortLinkId,
             final ExecutionContext context) {
-        
-        context.getLogger().info("No se encontraron datos en Redis Cache. Se obtendrán de Cosmos DB...");
 
-        // obtener el link largo de Cosmos DB
         Optional<LinkAccessStat> optLinkAccessStat = cosmosDbService.getLinkAccessStatById(shortLinkId);
 
         if (!optLinkAccessStat.isPresent()) {
-            return request.createResponseBuilder(HttpStatus.NOT_FOUND).body("No se encontró información estadística para el enlace requerido.")
-                    .build();
+            ApiResponseDTO response = new ApiResponseDTO(4004, "No se encontró información estadística para el enlace proporcionado.");
+            return request.createResponseBuilder(HttpStatus.NOT_FOUND).body(response).build();
         }
 
-        context.getLogger().info("Datos encontrados en Cosmos DB: " + optLinkAccessStat.get());
+        context.getLogger().info("Datos encontrados en DB: " + optLinkAccessStat.get());
+        LinkAccessStatDTO linkAccessStatDTO = optLinkAccessStat.get().toDTO();
         
+        ApiResponseDTO response = new ApiResponseDTO(0, "OK", linkAccessStatDTO);
+
         // return as json
-        return request.createResponseBuilder(HttpStatus.OK).body(optLinkAccessStat.get().toJson()).build();
+        return request.createResponseBuilder(HttpStatus.OK).body(response).build();
     }
     
 }

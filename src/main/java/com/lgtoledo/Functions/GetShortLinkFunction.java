@@ -1,15 +1,15 @@
 package com.lgtoledo.Functions;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import com.lgtoledo.Configurations;
 import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
 import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
+import com.lgtoledo.Models.ApiResponseDTO;
 import com.lgtoledo.Models.Link;
 import com.lgtoledo.Models.LinkAccessStat;
-import com.lgtoledo.utils.LinkUtils;
+import com.lgtoledo.utils.Utils;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -34,7 +34,7 @@ public class GetShortLinkFunction {
     String longUrlRegex = "^https://.*$";
 
     @FunctionName("getShortLink")
-    public HttpResponseMessage getShortLink(
+    public HttpResponseMessage run(
             @HttpTrigger(name = "req", methods = { HttpMethod.POST }, authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
 
@@ -43,8 +43,10 @@ public class GetShortLinkFunction {
         
         // Verifico si el link largo fue enviado en el body del request
         Optional<String> optLongLink = request.getBody();
-        if (!LinkUtils.isValidUrl(optLongLink, longUrlRegex)) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Se debe de proporcionar un link largo válido." ).build();
+        if (!Utils.isValidUrl(optLongLink, longUrlRegex)) {
+            ApiResponseDTO response = new ApiResponseDTO(4001, "Se debe de proporcionar un link largo válido.");
+
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(response).build();
         }
 
         String longLink = optLongLink.get();
@@ -53,14 +55,18 @@ public class GetShortLinkFunction {
         Optional<String> optionalShortLinkId = generateUniqueShortLink(maxTries, cosmosDbService);
 
         if (!optionalShortLinkId.isPresent()) {
-            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("No se pudo generar un link corto único.").build();
+            ApiResponseDTO response = new ApiResponseDTO(5001, "No se pudo generar un link corto único.");
+
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(response).build();
         }
 
         // guardo el link en Cosmos DB
         String shortLinkId = optionalShortLinkId.get();
         Link savedLink = cosmosDbService.saveLink(new Link(shortLinkId, longLink));
         if (savedLink == null) {
-            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("No se pudo guardar el link en Cosmos DB.").build();
+            ApiResponseDTO response = new ApiResponseDTO(5001, "No se pudo generar un link corto único.");
+
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(response).build();
         }
 
         // guardo el link en Redis Cache
@@ -73,15 +79,18 @@ public class GetShortLinkFunction {
         context.getLogger().info("Link corto generado: " + savedLink.getId() + ". Duración: " + duration + "ms.");
 
         String loadBalancerUrl = Configurations.LOAD_BALANCER_URL;
+        savedLink.setId(loadBalancerUrl + "/l/" + savedLink.getId());
+
+        ApiResponseDTO response = new ApiResponseDTO(0, "OK", savedLink);
 
         // response as json
-        return request.createResponseBuilder(HttpStatus.CREATED).body(savedLink.toJsonResponse(loadBalancerUrl)).build();
+        return request.createResponseBuilder(HttpStatus.CREATED).body(response).build();
     }
 
 
     private Optional<String> generateUniqueShortLink(int maxTries, CosmosDbService cosmosDbService) {
         for (int i = 0; i < maxTries; i++) {
-            String potentialShortLinkId = LinkUtils.generateShortLink();
+            String potentialShortLinkId = Utils.generateShortLink();
             if (!cosmosDbService.existsLinkById(potentialShortLinkId)) {
                 return Optional.of(potentialShortLinkId);
             }
@@ -94,9 +103,9 @@ public class GetShortLinkFunction {
 
             LinkAccessStat newStat = new LinkAccessStat();
             newStat.setId(shortLinkId);
-            newStat.setCreationDate(LocalDateTime.now());
-            newStat.setFirstAccessedDate(null);
-            newStat.setLastAccessedDate(null);
+            newStat.setCreationDateUTC(Utils.getCurrentUtcDateTime());
+            newStat.setFirstAccessedDateUTC(null);
+            newStat.setLastAccessedDateUTC(null);
             newStat.setAccessCount(0);
 
             cosmosDbService.saveLinkAccessStat(newStat);

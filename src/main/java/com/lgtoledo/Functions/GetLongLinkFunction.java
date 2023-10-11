@@ -7,8 +7,10 @@ import java.util.concurrent.CompletableFuture;
 import com.lgtoledo.Configurations;
 import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
 import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
+import com.lgtoledo.Models.ApiResponseDTO;
 import com.lgtoledo.Models.Link;
 import com.lgtoledo.Models.LinkAccessStat;
+import com.lgtoledo.utils.Utils;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -60,16 +62,17 @@ public class GetLongLinkFunction {
         Optional<Link> optLongLink = cosmosDbService.getLinkByShortId(shortLinkId);
 
         if (!optLongLink.isPresent()) {
-            return request.createResponseBuilder(HttpStatus.NOT_FOUND).body("No se encontró el enlace requerido.")
-                    .build();
+            ApiResponseDTO response = new ApiResponseDTO(4004, "No se encontró el enlace requerido");
+
+            return request.createResponseBuilder(HttpStatus.NOT_FOUND).body(response).build();
         }
 
-        context.getLogger().info("Datos encontrados en Cosmos DB: " + optLongLink.get());
         String longLink = optLongLink.get().getlongLink();
 
         if (longLink == null || longLink.isEmpty()) {
-            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al procesar el enlace.")
-                    .build();
+            ApiResponseDTO response = new ApiResponseDTO(5001, "Error al procesar el enlace");
+
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(response).build();
         }
         // registro la estadística
         registerStatAsync(shortLinkId, cosmosDbService);
@@ -85,13 +88,15 @@ public class GetLongLinkFunction {
     CompletableFuture.runAsync(() -> {
             Optional<LinkAccessStat> optLinkAccessStat = cosmosDbService.getLinkAccessStatById(shortLinkId);
 
+            LocalDateTime now = Utils.getCurrentUtcDateTime();
+
             if (!optLinkAccessStat.isPresent()) {
                 // si no existe, lo creo
                 LinkAccessStat newStat = new LinkAccessStat();
                 newStat.setId(shortLinkId);
-                newStat.setCreationDate(LocalDateTime.now());
-                newStat.setFirstAccessedDate(null);
-                newStat.setLastAccessedDate(null);
+                newStat.setCreationDateUTC(now);
+                newStat.setFirstAccessedDateUTC(null);
+                newStat.setLastAccessedDateUTC(null);
                 newStat.setAccessCount(0);
 
                 cosmosDbService.saveLinkAccessStat(newStat);
@@ -100,10 +105,10 @@ public class GetLongLinkFunction {
                 LinkAccessStat linkAccessStat = optLinkAccessStat.get();
 
                 linkAccessStat.setAccessCount(linkAccessStat.getAccessCount() + 1);
-                if (linkAccessStat.getFirstAccessedDate() == null) {
-                    linkAccessStat.setFirstAccessedDate(LocalDateTime.now());
+                if (linkAccessStat.getFirstAccessedDateUTC() == null) {
+                    linkAccessStat.setFirstAccessedDateUTC(now);
                 }
-                linkAccessStat.setLastAccessedDate(LocalDateTime.now());
+                linkAccessStat.setLastAccessedDateUTC(now);
 
                 cosmosDbService.saveLinkAccessStat(linkAccessStat);
             } 
