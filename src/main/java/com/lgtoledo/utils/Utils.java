@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,12 +25,17 @@ public class Utils {
         return matcher.matches();
     }
 
-    /**
-     * Genera un link corto aleatorio de 6 caracteres.
-     * @return Un identificador único aleatorio para el link corto.
-     */
-    public static String generateShortLink() {
-        return UUID.randomUUID().toString().substring(0, 6);
+    public static boolean isShortLinkValid(String baseUrl, String shortLink) {
+        if (shortLink == null || shortLink.isEmpty()) {
+            return false;
+        }
+        
+        // should be load balancer url +/l + 6 chars
+        String regex = baseUrl + "/l/[a-zA-Z0-9]{6}";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(shortLink);
+        
+        return matcher.matches();
     }
 
     /**
@@ -43,6 +47,7 @@ public class Utils {
         String[] parts = shortUrl.split("/");
         return parts[parts.length - 1];
     }
+    
     /*
      * Retorna la fecha y hora actual en UTC.
      */
@@ -50,6 +55,5 @@ public class Utils {
         ZonedDateTime utc = ZonedDateTime.now(ZoneId.of("UTC"));
         return utc.toLocalDateTime();
     }
-
 
 }
