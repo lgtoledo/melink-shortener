@@ -3,6 +3,7 @@ package com.lgtoledo.Functions;
 import com.lgtoledo.Configurations;
 import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
 import com.lgtoledo.DataAccess.RedisCache.RedisCacheService;
+import com.lgtoledo.Models.ApiResponseDTO;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -41,19 +42,24 @@ public class DeleteLinkFunction {
             context.getLogger().info("Procesando request para eliminar linkId: " + id);     
 
             if (items.length == 0) {
-                return request.createResponseBuilder(HttpStatus.NOT_FOUND).body("No se encontró el link a eliminar.").build();
+                ApiResponseDTO response = new ApiResponseDTO(4004, "No se encontró el link a eliminar.");
+
+                return request.createResponseBuilder(HttpStatus.NOT_FOUND).body(response).build();
             }
 
             cosmosDbService.deleteLinkByIdAsync(id);
             redisCacheService.deleteLinkAsync(id);
             cosmosDbService.deleteLinkAccessStatByIdAsync(id);
 
-            return request.createResponseBuilder(HttpStatus.OK).body("Se eliminaron todos los links correctamente.").build();
+            ApiResponseDTO response = new ApiResponseDTO(0, "OK");
+
+            return request.createResponseBuilder(HttpStatus.OK).body(response).build();
 
         } catch (Exception e) {
             context.getLogger().severe("Error al eliminar link: " + e.getMessage());
+            ApiResponseDTO response = new ApiResponseDTO(5001, "Error al eliminar el link.");
 
-            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al eliminar los links.").build();
+            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR).body(response).build();
         }
     }
 

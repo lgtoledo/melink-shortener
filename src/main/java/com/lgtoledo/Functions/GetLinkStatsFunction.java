@@ -7,6 +7,7 @@ import com.lgtoledo.DataAccess.CosmosDB.CosmosDbService;
 import com.lgtoledo.Models.ApiResponseDTO;
 import com.lgtoledo.Models.LinkAccessStat;
 import com.lgtoledo.Models.LinkAccessStatDTO;
+import com.lgtoledo.utils.Utils;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
@@ -28,11 +29,24 @@ public class GetLinkStatsFunction {
     public HttpResponseMessage run(
             @HttpTrigger(
                 name = "req",
-                route = "linkStats/{shortLinkId}",
+                route = "linkStats",
                 methods = { HttpMethod.GET },
                 authLevel = AuthorizationLevel.ANONYMOUS) HttpRequestMessage<Optional<String>> request,
-            @BindingName("shortLinkId") String shortLinkId,
             final ExecutionContext context) {
+
+        final String link = request.getQueryParameters().get("link");
+
+        String baseUrl = Configurations.LOAD_BALANCER_URL;
+        
+        if (Utils.isShortLinkValid(baseUrl, link) == false) {
+            ApiResponseDTO response = new ApiResponseDTO(4001, "Se debe de proporcionar un link válido.");
+
+            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body(response).build();
+        }
+
+        context.getLogger().info("Procesando request para obtener estadísticas del link: " + link);
+        
+        String shortLinkId = Utils.extractLastPart(link);
 
         Optional<LinkAccessStat> optLinkAccessStat = cosmosDbService.getLinkAccessStatById(shortLinkId);
 
